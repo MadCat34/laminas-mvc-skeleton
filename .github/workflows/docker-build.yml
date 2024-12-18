@@ -42,29 +42,19 @@ jobs:
         if: matrix.target.name == 'dev'
         run: docker run --rm laminas:${{ matrix.target.name }} vendor/bin/phpunit module/*/test
 
-      - name: Start container for ${{ matrix.target.name }}
-        run: docker run --rm -d -p ${{ matrix.target.port }}:80 --name laminas-test-${{ matrix.target.name }} laminas:${{ matrix.target.name }}
-
-      - name: Check HTTP status
+      - name: Start container for ${{ matrix.target.name }} and check HTTP status
         run: |
-          retries=15
-          while [ $retries -gt 0 ]; do
-              http_status_code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:${{ matrix.target.port }})
-              response_body=$(curl -s http://localhost:${{ matrix.target.port }})
-              if [ "$http_status_code" -eq 200 ] && [[ "$response_body" =~ "Welcome" ]]; then
-                  echo "HTTP status code: $http_status_code"
-                  echo "Response body: $response_body"
-                  break
-              fi
-              echo "Waiting for service to be ready..."
-              sleep 10
-              retries=$((retries-1))
-          done
-          if [ $retries -eq 0 ]; then
-              echo "Service did not start successfully."
+          docker run --rm -d -p ${{ matrix.target.port }}:80 --name laminas-test-${{ matrix.target.name }} laminas:${{ matrix.target.name }}
+          http_status_code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:${{ matrix.target.port }})
+          response_body=$(curl -s http://localhost:${{ matrix.target.port }})
+          if [ "$http_status_code" -eq 200 ] && [[ "$response_body" =~ "Welcome" ]]; then
               echo "HTTP status code: $http_status_code"
               echo "Response body: $response_body"
-              exit 1
+          else
+                echo "Service did not start successfully."
+                echo "HTTP status code: $http_status_code"
+                echo "Response body: $response_body"
+                exit 1
           fi
 
       - name: Stop and remove container for ${{ matrix.target.name }}
